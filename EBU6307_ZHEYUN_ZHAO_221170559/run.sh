@@ -1,0 +1,12 @@
+cd code
+python ex1a.py
+python ex1b.py
+python ex2a.py
+python ex2b.py
+python ex2c.py
+python ex2d.py
+python ex2e.py
+python ex2f.py
+python ex3a.py
+python ex3b.py
+python ex3c.py

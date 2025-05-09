@@ -1,4 +1,4 @@
-cd code
+cd codes
 python ex1a.py
 python ex1b.py
 python ex2a.py

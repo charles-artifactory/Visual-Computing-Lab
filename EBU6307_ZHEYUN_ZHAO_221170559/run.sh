@@ -10,3 +10,4 @@ python ex2f.py
 python ex3a.py
 python ex3b.py
 python ex3c.py
+python ex4.py

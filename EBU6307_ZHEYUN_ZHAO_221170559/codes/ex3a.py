@@ -6,137 +6,75 @@ INPUT_DIR = "../inputs/"
 OUTPUT_DIR = "../results/"
 
 
-def compute_matching_cost(left_img, right_img, max_disparity):
+def compute_disparity_map(img_left, img_right, window_size, max_disparity=60):
     """
-    Compute the matching cost for all possible disparities
+    Compute disparity map using window-based stereo matching.
 
     Args:
-        left_img: Left stereo image
-        right_img: Right stereo image
-        max_disparity: Maximum disparity value to consider
+        img_left (np.ndarray): Left image.
+        img_right (np.ndarray): Right image.
+        window_size (int): Size of the window for cost aggregation.
+        max_disparity (int, optional): Maximum disparity value to search. Default is 60.
 
     Returns:
-        3D cost volume with dimensions (height, width, max_disparity+1)
+        np.ndarray: Disparity map normalized for visualization.
     """
-    height, width = left_img.shape
+    if len(img_left.shape) == 3:
+        img_left = cv2.cvtColor(img_left, cv2.COLOR_BGR2GRAY)
+        img_right = cv2.cvtColor(img_right, cv2.COLOR_BGR2GRAY)
 
-    cost_volume = np.zeros((height, width, max_disparity + 1), dtype=np.float32)
+    h, w = img_left.shape
+    pad = window_size // 2
+    disparity_map = np.zeros((h, w), dtype=np.float32)
 
-    for d in range(max_disparity + 1):
-        right_shifted = np.zeros_like(right_img)
-        right_shifted[:, 0:width-d] = right_img[:, d:width]
+    img_left_pad = cv2.copyMakeBorder(img_left, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
+    img_right_pad = cv2.copyMakeBorder(img_right, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
 
-        diff = (left_img.astype(np.float32) - right_shifted.astype(np.float32)) ** 2
-        cost_volume[:, :, d] = diff
+    for y in range(h):
+        for x in range(w):
+            min_cost = float('inf')
+            best_disparity = 0
 
-    return cost_volume
+            window_left = img_left_pad[y:y + window_size, x:x + window_size]
 
+            for d in range(max_disparity):
+                if x - d < 0:
+                    continue
 
-def aggregate_costs(cost_volume, window_size):
-    """
-    Aggregate costs using a window-based approach
+                window_right = img_right_pad[y:y + window_size, (x - d):x - d + window_size]
 
-    Args:
-        cost_volume: 3D cost volume with matching costs
-        window_size: Size of the aggregation window
+                cost = np.sum((window_left.astype(np.float32) - window_right.astype(np.float32)) ** 2)
 
-    Returns:
-        Aggregated cost volume
-    """
-    height, width, num_disparities = cost_volume.shape
+                if cost < min_cost:
+                    min_cost = cost
+                    best_disparity = d
 
-    aggregated_cost = np.zeros_like(cost_volume)
+            disparity_map[y, x] = best_disparity
 
-    half_window = window_size // 2
-
-    for d in range(num_disparities):
-        for y in range(height):
-            for x in range(width):
-                y_start = max(0, y - half_window)
-                y_end = min(height, y + half_window + 1)
-                x_start = max(0, x - half_window)
-                x_end = min(width, x + half_window + 1)
-
-                aggregated_cost[y, x, d] = np.sum(cost_volume[y_start:y_end, x_start:x_end, d])
-
-                actual_window_size = (y_end - y_start) * (x_end - x_start)
-                aggregated_cost[y, x, d] /= actual_window_size
-
-    return aggregated_cost
-
-
-def compute_disparity(aggregated_cost):
-    """
-    Compute disparity map by finding minimum cost disparity
-
-    Args:
-        aggregated_cost: Aggregated cost volume
-
-    Returns:
-        Disparity map
-    """
-    disparity_map = np.argmin(aggregated_cost, axis=2)
-
-    return disparity_map
-
-
-def stereo_matching(left_img, right_img, window_size, max_disparity):
-    """
-    Perform window-based stereo matching
-
-    Args:
-        left_img: Left stereo image
-        right_img: Right stereo image
-        window_size: Size of the aggregation window
-        max_disparity: Maximum disparity value to consider
-
-    Returns:
-        Disparity map
-    """
-    print(f"Computing stereo matching with window size {window_size}x{window_size}...")
-
-    # Step 1: Compute matching cost for all disparities
-    cost_volume = compute_matching_cost(left_img, right_img, max_disparity)
-
-    # Step 2: Aggregate costs using window-based approach
-    aggregated_cost = aggregate_costs(cost_volume, window_size)
-
-    # Step 3: Compute disparity map
-    disparity_map = compute_disparity(aggregated_cost)
-
+    disparity_map = (disparity_map * 255 / max_disparity).astype(np.uint8)
     return disparity_map
 
 
 def main():
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+    """
+    Main function to read stereo images, compute disparity maps with different window sizes,
+    and save the results to the output directory.
+    """
+    img_left = cv2.imread(os.path.join(INPUT_DIR, "teddy_im2.png"))
+    img_right = cv2.imread(os.path.join(INPUT_DIR, "teddy_im6.png"))
 
-    left_img_path = os.path.join(INPUT_DIR, "teddy_im2.png")
-    right_img_path = os.path.join(INPUT_DIR, "teddy_im6.png")
-
-    left_img = cv2.imread(left_img_path, cv2.IMREAD_GRAYSCALE)
-    right_img = cv2.imread(right_img_path, cv2.IMREAD_GRAYSCALE)
-
-    if left_img is None or right_img is None:
-        print(f"Error: Could not read stereo images")
+    if img_left is None or img_right is None:
         return
-
-    print(f"Processing stereo images")
-    print(f"Left image shape: {left_img.shape}, Right image shape: {right_img.shape}")
-
-    max_disparity = 64
 
     window_sizes = [3, 11]
 
-    for window_size in window_sizes:
-        disparity_map = stereo_matching(left_img, right_img, window_size, max_disparity)
+    for w_size in window_sizes:
+        disparity_map = compute_disparity_map(img_left, img_right, w_size)
 
-        normalized_disparity = (disparity_map * (255 / max_disparity)).astype(np.uint8)
-
-        output_filename = os.path.join(OUTPUT_DIR, f"ex3a_w_{window_size}.png")
-        cv2.imwrite(output_filename, normalized_disparity)
-        print(f"Saved disparity map with window size {window_size}x{window_size} to {output_filename}")
+        output_filename = f"ex3a_w_{w_size}.png"
+        cv2.imwrite(os.path.join(OUTPUT_DIR, output_filename), disparity_map)
 
 
 if __name__ == "__main__":
+    print('ex3a...')
     main()

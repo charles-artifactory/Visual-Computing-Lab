@@ -81,24 +81,41 @@ def gaussian_filter(image, kernel_size, sigma):
 
 
 def main():
+    """
+    Main function to process and filter an image using Gaussian filters.
+
+    This function performs the following steps:
+    1. Checks if the output directory exists; creates it if it does not.
+    2. Checks for the existence of a grayscale image ('lena_gray.jpg') in the input directory.
+        - If not found, converts the color image ('lena.jpg') to grayscale and saves it.
+        - If found, loads the grayscale image.
+    3. Applies Gaussian filters with different kernel sizes and sigma values to the grayscale image.
+    4. Saves the filtered images to the output directory with filenames indicating the kernel size and sigma used.
+
+    Dependencies:
+         - os
+         - cv2
+         - numpy as np
+         - gaussian_filter (custom or imported function)
+
+    Assumptions:
+         - INPUT_DIR and OUTPUT_DIR are defined globally.
+         - The input directory contains 'lena.jpg' if 'lena_gray.jpg' is not present.
+    """
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
     image_path = os.path.join(INPUT_DIR, "lena_gray.jpg")
 
     if not os.path.exists(image_path):
-        print(f"Grayscale image not found at {image_path}, converting from color image...")
         color_image = cv2.imread(os.path.join(INPUT_DIR, "lena.jpg"))
         if color_image is None:
-            print("Error: Could not read color image")
             return
         gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
         cv2.imwrite(image_path, gray_image)
-        print(f"Saved grayscale image to {image_path}")
     else:
         gray_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         if gray_image is None:
-            print(f"Error: Could not read grayscale image from {image_path}")
             return
 
     kernel_sizes = [5, 21]
@@ -106,16 +123,14 @@ def main():
 
     for size in kernel_sizes:
         for sigma in sigmas:
-            print(f"Applying Gaussian filter with kernel size = {size}, sigma = {sigma}")
-
             filtered_img = gaussian_filter(gray_image, size, sigma)
 
             filtered_img = np.clip(filtered_img, 0, 255).astype(np.uint8)
 
             output_filename = os.path.join(OUTPUT_DIR, f"ex2a_gf_{size}_{sigma}.jpg")
             cv2.imwrite(output_filename, filtered_img)
-            print(f"Saved result to {output_filename}")
 
 
 if __name__ == "__main__":
+    print('ex2a...')
     main()

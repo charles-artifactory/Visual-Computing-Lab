@@ -7,6 +7,23 @@ def downsampling(frame, factor):
 
 
 def upsampling(frame, factor):
+    """
+    Upsamples a 2D image (frame) using bilinear interpolation by a given integer factor.
+
+    Parameters:
+        frame (np.ndarray): 2D numpy array representing the grayscale image to be upsampled.
+        factor (int): The upsampling factor (must be greater than 1).
+
+    Returns:
+        np.ndarray: The upsampled image as a 2D numpy array of type uint8.
+
+    Raises:
+        ValueError: If the upsampling factor is less than or equal to 1.
+
+    Notes:
+        - The function uses bilinear interpolation to compute the pixel values of the upsampled image.
+        - The input frame must be a 2D numpy array (grayscale image).
+    """
     if factor <= 1:
         raise ValueError("Factor must be greater than 1")
 
@@ -41,8 +58,7 @@ def intensity_downscaling(frame, n):
     return (frame / level).astype(np.uint8) * level
 
 
-im = cv2.imread('../inputs/lena.jpg', cv2.IMREAD_GRAYSCALE)
-cv2.imwrite('../inputs/lena_gray.jpg', im)
+print('ex1a...')
 
 # Lena
 im = cv2.imread('../inputs/lena_gray.jpg', cv2.IMREAD_GRAYSCALE)
